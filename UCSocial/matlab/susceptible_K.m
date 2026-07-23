@@ -22,8 +22,8 @@ for ii = 1:length(uniqueA)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition(m/d, A_alpha, A_beta);
-        condVec = cumprod(pVec);
+        pVec = 1 - cusp_condition((1:d)/d, A_alpha, A_beta);
+        condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1));
         terms = comb .* (theta_A.^(d - m)) .* ((1 - theta_A).^m) .* condVec;
         val = sum(terms);
@@ -39,8 +39,8 @@ for ii = 1:length(uniqueB)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition(m/d, B_alpha, B_beta);
-        condVec = cumprod(pVec);
+        pVec = 1 - cusp_condition((1:d)/d, B_alpha, B_beta);
+        condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1));
         terms = comb .* (theta_B.^(d - m)) .* ((1 - theta_B).^m) .* condVec;
         val = sum(terms);
