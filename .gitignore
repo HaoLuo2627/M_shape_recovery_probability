@@ -16,7 +16,7 @@ old_or_backup/
 *.exe
 *.dll
 *.asv
-A_beta_*_A_theta_*/*
+A_alpha_*_A_beta_*_B_alpha_*_B_beta_*/*
 .agents/
 .github/
 .vscode/
