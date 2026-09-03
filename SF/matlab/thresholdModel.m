@@ -1,13 +1,13 @@
 function dy=thresholdModel(t,y)
 
-global lambda_A lambda_B r_A r_B A_alpha A_beta B_alpha B_beta rho_0 degree degree_A degree_B
-%   lambda_A为传播率，r_A为恢复概率，T为节点的固有阈值
+global lambda_A lambda_B h_A h_B A_a A_c B_a B_c rho_0 degree
+%   lambda为传播率，h为采纳概率，T为节点的固有阈值
 
 %   y: theta_w_A(t)与theta_w_B(t)串连的向量
 
 %网络A和网络B的平均度
-avg_K_A = degree_A(:,1)' * degree_A(:,2);
-avg_K_B = degree_B(:,1)' * degree_B(:,2);
+avg_K_A = degree(:,1)' * degree(:,3);
+avg_K_B = degree(:,2)' * degree(:,3);
 
 len_degree = size(degree,1);
 dy = zeros(len_degree+len_degree,1);
@@ -15,13 +15,6 @@ dy = zeros(len_degree+len_degree,1);
 %计算theta_A和theta_B
 theta_A = y(1:len_degree)' * (degree(:,1) .* degree(:,3) / avg_K_A);
 theta_B = y(len_degree+1:len_degree+len_degree)' * (degree(:,2) .* degree(:,3) / avg_K_B);
-
-%%计算每条边的感染概率
-% lambda_w_A = 1 - (1 - lambda_A) .^ weight_A(1:len_weight_A,1);
-% lambda_w_B = 1 - (1 - lambda_B) .^ weight_B(1:len_weight_B,1);
-
-inf_w_A = lambda_A;
-inf_w_B = lambda_B;
 
 %计算 xi_S_w_A
 degA_list = degree(:,1);
@@ -42,7 +35,7 @@ for ii = 1:length(uniqueA)
         val = 1;
     else
         m = 0:(d-1);
-        pVec = 1 - cusp_condition((1:(d-1))/d, A_alpha, A_beta);
+        pVec = (1 - h_A) .* ones(1, d-1);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d) - gammaln(d - m) - gammaln(m + 1)); % nchoosek(d-1,m)
         terms = comb .* (theta_A.^(d - m - 1)) .* ((1 - theta_A).^m) .* condVec;
@@ -58,7 +51,7 @@ for ii = 1:length(uniqueB)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition((1:d)/d, B_alpha, B_beta);
+        pVec = (1 - h_B) .* ones(1, d);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1)); % nchoosek(d,m)
         terms = comb .* (theta_B.^(d - m)) .* ((1 - theta_B).^m) .* condVec;
@@ -77,7 +70,7 @@ for ii = 1:length(uniqueB)
         val = 1;
     else
         m = 0:(d-1);
-        pVec = 1 - cusp_condition((1:(d-1))/d, B_alpha, B_beta);
+        pVec = (1 - h_B) .* ones(1, d-1);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d) - gammaln(d - m) - gammaln(m + 1)); % nchoosek(d-1,m)
         terms = comb .* (theta_B.^(d - m - 1)) .* ((1 - theta_B).^m) .* condVec;
@@ -93,7 +86,7 @@ for ii = 1:length(uniqueA)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition((1:d)/d, A_alpha, A_beta);
+        pVec = (1 - h_A) .* ones(1, d);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1)); % nchoosek(d,m)
         terms = comb .* (theta_A.^(d - m)) .* ((1 - theta_A).^m) .* condVec;
@@ -104,10 +97,13 @@ end
 
 xi_S_w_B = tempA2 .* tempB2 .* (1 - rho_0);
 
+r_A = recovery_probability(lambda_A, A_a, A_c);  % 计算A层节点的恢复概率
+r_B = recovery_probability(lambda_B, B_a, B_c);  % 计算B层节点的恢复概率
+
 %计算xi_R_w_A
-xi_R_w_A = r_A .* (1 - y(1:len_degree)) .* (1 - inf_w_A) ./ inf_w_A;
+xi_R_w_A = r_A .* (1 - y(1:len_degree)) .* (1 - lambda_A) ./ lambda_A;
 %计算xi_R_w_B
-xi_R_w_B = r_B .* (1 - y(len_degree+1:len_degree+len_degree)) .* (1 - inf_w_B) ./ inf_w_B;
+xi_R_w_B = r_B .* (1 - y(len_degree+1:len_degree+len_degree)) .* (1 - lambda_B) ./ lambda_B;
 %计算 xi_I_W_A
 xi_I_W_A = y(1:len_degree) - xi_S_w_A - xi_R_w_A;
 %计算 xi_I_W_B
@@ -115,7 +111,7 @@ xi_I_W_B = y(len_degree+1:len_degree+len_degree) - xi_S_w_B - xi_R_w_B;
 
 %写出微分方程
 %计算dtheta_w_A_t
-dy(1:len_degree) = -inf_w_A .* xi_I_W_A;
+dy(1:len_degree) = -lambda_A .* xi_I_W_A;
 %计算dtheta_w_B_t
-dy(len_degree+1:len_degree+len_degree) = -inf_w_B .* xi_I_W_B;
+dy(len_degree+1:len_degree+len_degree) = -lambda_B .* xi_I_W_B;
 end
