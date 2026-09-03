@@ -15,7 +15,7 @@ CPPFLAGS = -O2 -Wall
 IFLAGS = -I include/
 LFLAGS = 
 OBJS = src/network/ER_network.o src/network/SF_network.o\
-src/network/network_basic_ops.o src/utils/random_util.o src/utils/edge_weight.o src/cusp_condition.o
+src/network/network_overlay_ops.o src/network/network_basic_ops.o src/utils/random_util.o src/utils/edge_weight.o src/recovery_probability.o
 
 compile: $(Target)
 clean:
@@ -44,11 +44,11 @@ src/utils/random_util.o: src/utils/random_util.cpp
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
 src/utils/edge_weight.o: src/utils/edge_weight.cpp
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
-src/double_infection.o : src/double_infection.cpp include/cusp_condition.h
+src/double_infection.o : src/double_infection.cpp include/recovery_probability.h
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
 src/SF_double_infection.o : src/SF_double_infection.cpp
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
 src/ER_SF_double_infection.o : src/ER_SF_double_infection.cpp
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
-src/cusp_condition.o : src/cusp_condition.cpp include/cusp_condition.h
+src/recovery_probability.o : src/recovery_probability.cpp include/recovery_probability.h
 	$(CC) $(CPPFLAGS) $(IFLAGS) $(LFLAGS) -o $@ -c $<
