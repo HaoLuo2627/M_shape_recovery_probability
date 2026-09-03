@@ -9,7 +9,7 @@
 #include "network/SF_network.h"
 #include "network/network_overlay_ops.h"
 #include "utils/edge_weight.h"
-#include "cusp_condition.h"
+#include "recovery_probability.h"
 #include <iostream>
 #include <exception>
 #include <cerrno>
@@ -41,8 +41,19 @@ int initialize_zero(int *array, int size){
 	return 0;
 }
 
+// 个体采纳条件函数
+bool cusp_condition(double x, double prob) {
+    double rd_accept_rate = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+
+	if (rd_accept_rate <= prob){
+        return true;
+	}else{
+        return false;
+	}
+}
+
 //传播感染过程
-void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, double alpha_B, double r_B, double A_alpha, double A_beta, double B_alpha, double B_beta, int k_count, int seed[], int network_size, char *file_A, char *file_B)
+void double_layer_infection(Node A[], Node B[], double alpha_A, double h_A, double alpha_B, double h_B, double A_a, double A_c, double B_a, double B_c, int k_count, int seed[], int network_size, char *file_A, char *file_B)
 {
 	Infect Old[2*network_size];			//当前已经感染的节点数组，包括A网络和B网络的
 	Infect New_A[network_size];			//A网络新感染的节点数组
@@ -53,6 +64,9 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 	double rd_Recover_A;
 	double rd_Infection_B;
 	double rd_Recover_B;
+	const double r_A = recovery_probability(alpha_A, A_a, A_c);  // A层个体的恢复概率
+	const double r_B = recovery_probability(alpha_B, B_a, B_c);  // B层个体的恢复概率
+	// printf("r_A = %f, r_B = %f\n", r_A, r_B);
 
 	int rd_Add;
 	int i;
@@ -141,7 +155,7 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 						inst_tre_A = (A[p->data].degree > 0) ? (double)(A[p->data].info_count)/(double)(A[p->data].degree) : 0.0;  // 接收信息/节点度
 						// 只有 A 层收到新信息：仅重新评估 A 层响应。
 						// 任一层采纳后，下面的同步感染逻辑仍会令两层同时感染。
-						if (cusp_condition(inst_tre_A, A_alpha, A_beta)){
+						if (cusp_condition(inst_tre_A, h_A)){
 							A[p->data].type='I';
 							New_A[count_New_A].data=p->data;
 							New_A[count_New_A].type='A';
@@ -173,7 +187,7 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 						B[p->data].info_count++;
 						inst_tre_B = (B[p->data].degree > 0) ? (double)(B[p->data].info_count)/(double)(B[p->data].degree) : 0.0;  // 接收信息/节点度
 						// 只有 B 层收到新信息：仅重新评估 B 层响应。
-						if (cusp_condition(inst_tre_B, B_alpha, B_beta)){
+						if (cusp_condition(inst_tre_B, h_B)){
 							B[p->data].type='I';
 							New_B[count_New_B].data=p->data;
 							New_B[count_New_B].type='B';
@@ -196,7 +210,7 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 		{
 			if(Old[i].type=='A')
 			{
-				rd_Recover_A=rand()/(double)(RAND_MAX);
+				rd_Recover_A = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 				if(rd_Recover_A<r_A)
 				{
 					A[Old[i].data].type='R';
@@ -213,7 +227,7 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 
 			else if(Old[i].type=='B')
 			{
-				rd_Recover_B=rand()/(double)(RAND_MAX);
+				rd_Recover_B = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
 				if(rd_Recover_B<r_B)
 				{
 					B[Old[i].data].type='R';
@@ -299,13 +313,13 @@ void double_layer_infection(Node A[], Node B[], double alpha_A, double r_A, doub
 	//保存最终A网络感染节点个数
 	fp=fopen(file_A,"a");
 	if (fp != NULL) {
-		fprintf(fp,"%f %f %7d\n", alpha_A, alpha_B, ct_R_A );
+		fprintf(fp,"%f %f %7d\n", alpha_A, alpha_B, ct_R_A);
 		fclose(fp);
 	}
 	//保存最终B网络感染节点个数
 	fp=fopen(file_B,"a");
 	if (fp != NULL) {
-		fprintf(fp,"%f %f %7d\n", alpha_A, alpha_B, ct_R_B );
+		fprintf(fp,"%f %f %7d\n", alpha_A, alpha_B, ct_R_B);
 		fclose(fp);
 	}
 }
@@ -315,8 +329,10 @@ int select_seeds(int seed_count, int seed[], int network_size){
 	int i, flag = 0, t=0;
 	int MIN = 0;
 	int MAX = network_size-1;
-	if (seed_count < 0 || seed_count > network_size){
-		return -1;
+	if (seed_count <= 0 || seed_count > network_size){
+		char error_msg[256];
+		sprintf(error_msg, "seed_count must be in (0, %d], but actually is %d", network_size, seed_count);
+		throw std::invalid_argument(error_msg);
 	}
 	if (seed_count == network_size){
         for(i=0; i<network_size; i++){
@@ -386,8 +402,8 @@ void calculate_combined_degree_distribution(Node network1[], Node network2[], in
    	for (int i=0; i<=max_degree; i++){
    		for (int j=0; j<=max_degree; j++){
             if (combined_degree[i][j]!=0){
-            	fprintf(fp,"%d %d %f\n", i, j, (double)combined_degree[i][j]/(double)network_size);
-//            	printf("%d %d %f\n", i, j, (double)combined_degree[i][j]/(double)network_size);
+            	fprintf(fp,"%d %d %.17g\n", i, j, (double)combined_degree[i][j]/(double)network_size);
+//            	printf("%d %d %.17g\n", i, j, (double)combined_degree[i][j]/(double)network_size);
             }
    		}
    	}
@@ -398,30 +414,29 @@ void save_degree_into_file(char *file, char *file_distribution, Node network[], 
 {
 	FILE *fp, *fp1;
 
-		vector<int> distri(network_size+1, 0);
-		if((fp=fopen(file,"w"))==NULL || (fp1=fopen(file_distribution,"w"))==NULL) {
-			printf("weight distribution File cannot be opened\n");
-			if (fp != NULL) fclose(fp);
-			if (fp1 != NULL) fclose(fp1);
-		}else{
-			//写出每一条边的端点对
-			//写入网络大小
-			for (int i=0; i<network_size; i++){
-				if (network[i].degree >= 0 && network[i].degree <= network_size) {
-					distri[network[i].degree]++;
-				}
-				fprintf(fp, "%d\n", network[i].degree);
+	vector<int> distri(network_size+1, 0);
+	if((fp=fopen(file,"w"))==NULL || (fp1=fopen(file_distribution,"w"))==NULL) {
+		printf("weight distribution File cannot be opened\n");
+		if (fp != NULL) fclose(fp);
+		if (fp1 != NULL) fclose(fp1);
+	}else{
+		//写出每一条边的端点对
+		//写入网络大小
+		for (int i=0; i<network_size; i++){
+			if (network[i].degree >= 0 && network[i].degree <= network_size) {
+				distri[network[i].degree]++;
 			}
-
-			for (int i=0; i<=network_size; i++){
-				if (distri[i]){
-					fprintf(fp1, "%d %f\n", i, (double)distri[i]/(double)network_size);
-				}
-			}
-			fclose(fp);
-			fclose(fp1);
+			fprintf(fp, "%d\n", network[i].degree);
 		}
 
+		for (int i=0; i<=network_size; i++){
+			if (distri[i]){
+				fprintf(fp1, "%d %.17g\n", i, (double)distri[i]/(double)network_size);
+			}
+		}
+		fclose(fp);
+		fclose(fp1);
+	}
 }
 
 // 递归创建目录（含中间目录），类似 mkdir -p
@@ -481,18 +496,18 @@ int main(int argc, char *argv[])
 
     int max_degree = 0;
     if (argc < 7) {
-    	fprintf(stderr, "Usage: %s flag seed_count A_alpha A_beta B_alpha B_beta\n", argv[0]);
+    	fprintf(stderr, "Usage: %s flag seed_count A_a A_c B_a B_c\n", argv[0]);
     	return EXIT_FAILURE;
     }
 	int flag = atoi(argv[1]);  //初始创建网络和度分布的标志，若是0表示新建，是1表示读取已存在的数据
 	int seed_count = atoi(argv[2]);
-	double A_alpha = atof(argv[3]);//alpha in network A
-	double A_beta = atof(argv[4]);//theta in network A
-	double B_alpha = atof(argv[5]);//alpha in network B
-	double B_beta = atof(argv[6]);//theta in network B
+	double A_a = atof(argv[3]);//a in network A
+	double A_c = atof(argv[4]);//c in network A
+	double B_a = atof(argv[5]);//a in network B
+	double B_c = atof(argv[6]);//c in network B
     double degree_weight = 1.94;//v in Email network
 
-	printf("A_alpha is %f, A_beta is %f, B_alpha is %f, B_beta is %f\n", A_alpha, A_beta, B_alpha, B_beta);
+	printf("A_a is %f, A_c is %f, B_a is %f, B_c is %f\n", A_a, A_c, B_a, B_c);
     printf("degree_weight is %f\n", degree_weight);
 
 	char file_dir_name[filename_max_length];
@@ -510,7 +525,7 @@ int main(int argc, char *argv[])
 	char filename[filename_max_length];
 	char filename1[filename_max_length];
 	
-	sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f", A_alpha, A_beta, B_alpha, B_beta); //Email
+	sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f", A_a, A_c, B_a, B_c); //Email
 
 	if (mkdir_p(file_dir_name) != 0)
 	{
@@ -522,25 +537,25 @@ int main(int argc, char *argv[])
 			degree_Seq(A_info_network, degree_weight, network_size);
 			total_edge_count1 = SF_Model(A_info_network, network_size);
 			printf("total_edge_count1 is %d\n", total_edge_count1);
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_A_info_network_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_A_info_network_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			save_network_into_file(A_info_network,  network_size, file_dir_name);
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_A_info_network_degree_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_A_info_network_degree_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			max_degree_1 = save_network_degree_distribution(A_info_network, network_size, file_dir_name);
 
 			degree_Seq(B_info_network, degree_weight, network_size);
 			total_edge_count2 = SF_Model(B_info_network, network_size);
 			printf("total_edge_count2 is %d\n", total_edge_count2);
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_B_info_network_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_B_info_network_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			save_network_into_file(B_info_network, network_size, file_dir_name);
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_B_info_network_degree_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_B_info_network_degree_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			max_degree_2 = save_network_degree_distribution(B_info_network,  network_size, file_dir_name);
 
-			sprintf(filename, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_A_degree_list_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
-			sprintf(filename1, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_A_degree_distribution_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(filename, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_A_degree_list_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
+			sprintf(filename1, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_A_degree_distribution_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			save_degree_into_file(filename,filename1,A_info_network, network_size);
 
-			sprintf(filename, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_B_degree_list_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
-			sprintf(filename1, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_B_degree_distribution_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(filename, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_B_degree_list_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
+			sprintf(filename1, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_B_degree_distribution_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			save_degree_into_file(filename,filename1,B_info_network, network_size);
 
 			if (max_degree_1 >= max_degree_2){
@@ -548,13 +563,13 @@ int main(int argc, char *argv[])
 			}else{
 				max_degree = max_degree_2;
 			}
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_combined_degree_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email度分布
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_combined_degree_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email度分布
 			calculate_combined_degree_distribution(A_info_network, B_info_network, network_size, max_degree, file_dir_name);
 		}else{
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_A_info_network_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_A_info_network_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			total_edge_count1 = read_network_from_file(file_dir_name, A_info_network);
 			printf("total_edge_count1 is %d\n", total_edge_count1);
-			sprintf(file_dir_name, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_B_info_network_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta);//Email
+			sprintf(file_dir_name, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_B_info_network_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c);//Email
 			total_edge_count2 = read_network_from_file(file_dir_name, B_info_network);
 			printf("total_edge_count2 is %d\n", total_edge_count2);
 		}
@@ -565,7 +580,7 @@ int main(int argc, char *argv[])
 		int i,index_a,index_b;
 
 		memset(filename, 0, filename_max_length);
-		sprintf(filename, "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_Final_R_A_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta, seed_count);//Email
+		sprintf(filename, "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_Final_R_A_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c, seed_count);//Email
 		fp=fopen(filename,"w");
 		if (fp == NULL) {
 			fprintf(stderr, "ERROR: Cannot open file %s for writing. Check that parent directory exists.\n", filename);
@@ -574,7 +589,7 @@ int main(int argc, char *argv[])
 		fclose(fp);
 
 		memset(filename1, 0, filename_max_length);
-		sprintf(filename1,  "data/A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f/Email_Final_R_B_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt", A_alpha, A_beta, B_alpha, B_beta, A_alpha, A_beta, B_alpha, B_beta, seed_count);//Email
+		sprintf(filename1,  "data/A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f/Email_Final_R_B_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt", A_a, A_c, B_a, B_c, A_a, A_c, B_a, B_c, seed_count);//Email
 		fp=fopen(filename1,"w");
 		if (fp == NULL) {
 			fprintf(stderr, "ERROR: Cannot open file %s for writing. Check that parent directory exists.\n", filename1);
@@ -590,10 +605,8 @@ int main(int argc, char *argv[])
 				index_a = index_b;
 				init_threshold(A_info_network,  network_size);
 				init_threshold(B_info_network,  network_size);
-				if (select_seeds(seed_count, seed_array, network_size) != 0) {
-					throw std::runtime_error("invalid seed_count");
-				}
-				double_layer_infection(A_info_network, B_info_network, (double)index_a/100., 1., (double)index_b/100., 1., A_alpha, A_beta, B_alpha, B_beta, seed_count, seed_array, network_size, filename, filename1);
+				select_seeds(seed_count, seed_array, network_size);
+				double_layer_infection(A_info_network, B_info_network, (double)index_a/100., 1.0, (double)index_b/100., 1.0, A_a, A_c, B_a, B_c, seed_count, seed_array, network_size, filename, filename1);
 			}
 		}
 	}
