@@ -1,17 +1,17 @@
 clc;
 clear;
 
-A_alpha=2.3333333333333333;
-A_beta=0.3;
-B_alpha=0.4285714285714286;
-B_beta=0.7;
+A_a = 0.2;
+A_c = 0.2;
+B_a = A_a;
+B_c = A_c;
 
 seed_count = 10;
 
-baseDir = sprintf('A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f', A_alpha, A_beta, B_alpha, B_beta);
-S_time_file = fullfile(baseDir, sprintf('ER_S_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count));
-A_time_file = fullfile(baseDir, sprintf('ER_A_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count));
-R_time_file = fullfile(baseDir, sprintf('ER_R_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count));
+baseDir = sprintf('A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f', A_a, A_c, B_a, B_c);
+S_time_file = fullfile(baseDir, sprintf('ER_S_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count));
+A_time_file = fullfile(baseDir, sprintf('ER_A_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count));
+R_time_file = fullfile(baseDir, sprintf('ER_R_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count));
 
 S_time_data = load(S_time_file, '-ascii');
 A_time_data = load(A_time_file, '-ascii');
@@ -55,8 +55,8 @@ averaged_A_time = [0:most_frequent_len-1; averaged_A_time]';
 averaged_R_time = sum(simulated_time_R_matrix)/max_x;
 averaged_R_time_tmax = [(0:most_frequent_len-1)/(most_frequent_len-1); averaged_R_time]';
 averaged_R_time = [0:most_frequent_len-1; averaged_R_time]';
-save(fullfile(baseDir, sprintf('ER_Averaged_S_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), 'averaged_S_time', '-ascii', '-double');
-save(fullfile(baseDir, sprintf('ER_Averaged_A_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), 'averaged_A_time', '-ascii', '-double');
-save(fullfile(baseDir, sprintf('ER_Averaged_R_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), 'averaged_R_time', '-ascii', '-double');
-save(fullfile(baseDir, sprintf('ER_Averaged_R_timeMax_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), 'averaged_R_time_tmax', '-ascii', '-double');
+save(fullfile(baseDir, sprintf('ER_Averaged_S_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), 'averaged_S_time', '-ascii', '-double');
+save(fullfile(baseDir, sprintf('ER_Averaged_A_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), 'averaged_A_time', '-ascii', '-double');
+save(fullfile(baseDir, sprintf('ER_Averaged_R_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), 'averaged_R_time', '-ascii', '-double');
+save(fullfile(baseDir, sprintf('ER_Averaged_R_timeMax_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), 'averaged_R_time_tmax', '-ascii', '-double');
 

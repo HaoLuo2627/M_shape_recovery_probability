@@ -2,16 +2,16 @@ clear;
 clc;
 close all;
 
-A_alpha=2.3333333333333333;
-A_beta=0.3;
-B_alpha=0.4285714285714286;
-B_beta=0.7;
+A_a = 0.2;
+A_c = 0.2;
+B_a = A_a;
+B_c = A_c;
 seed_count = 10;
 
-baseDir = sprintf('A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f', A_alpha, A_beta, B_alpha, B_beta);
-averaged_S_time = load(fullfile(baseDir, sprintf('ER_Averaged_S_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), '-ascii');
-averaged_A_time = load(fullfile(baseDir, sprintf('ER_Averaged_A_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), '-ascii');
-averaged_R_time = load(fullfile(baseDir, sprintf('ER_Averaged_R_time_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count)), '-ascii');
+baseDir = sprintf('A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f', A_a, A_c, B_a, B_c);
+averaged_S_time = load(fullfile(baseDir, sprintf('ER_Averaged_S_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), '-ascii');
+averaged_A_time = load(fullfile(baseDir, sprintf('ER_Averaged_A_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), '-ascii');
+averaged_R_time = load(fullfile(baseDir, sprintf('ER_Averaged_R_time_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_%d.txt', A_a, A_c, B_a, B_c, seed_count)), '-ascii');
 
 plot(averaged_S_time(:,1), averaged_S_time(:,2), 'b-o', 'DisplayName', 'S(t)');
 hold on
