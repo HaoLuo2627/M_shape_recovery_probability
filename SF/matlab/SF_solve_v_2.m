@@ -17,10 +17,8 @@ lambda_A_array=0.01:0.01:1;
 
 v = 2;
 
-% for A_a = [0.01, 0.2, 0.5, 0.8, 0.99]
-for A_a = 0.01
-    for A_c = 0.8
-    % for A_c = [0.01, 0.2, 0.5, 0.8, 1]
+for A_a = [0.01, 0.2, 0.5, 0.8, 0.99]
+    for A_c = [0.01, 0.2, 0.5, 0.8, 1]
         B_a = A_a;
         B_c = A_c;
         disp(['A_a = ' num2str(A_a) ', A_c = ' num2str(A_c) ', B_a = ' num2str(B_a) ', B_c = ' num2str(B_c) ', v = ' num2str(v)]);
