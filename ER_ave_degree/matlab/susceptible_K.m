@@ -1,6 +1,6 @@
 function yy=susceptible_K(kk,theta_A,theta_B)
 
-global A_alpha A_beta B_alpha B_beta rho_0 degree
+global h_A h_B rho_0 degree
 
 % 支持向量化 kk（标量或索引向量）
 kk = kk(:);
@@ -22,7 +22,7 @@ for ii = 1:length(uniqueA)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition((1:d)/d, A_alpha, A_beta);
+        pVec = (1 - h_A) .* ones(1, d);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1));
         terms = comb .* (theta_A.^(d - m)) .* ((1 - theta_A).^m) .* condVec;
@@ -39,7 +39,7 @@ for ii = 1:length(uniqueB)
         val = 1;
     else
         m = 0:d;
-        pVec = 1 - cusp_condition((1:d)/d, B_alpha, B_beta);
+        pVec = (1 - h_B) .* ones(1, d);
         condVec = [1, cumprod(pVec)];
         comb = exp(gammaln(d+1) - gammaln(d - m + 1) - gammaln(m + 1));
         terms = comb .* (theta_B.^(d - m)) .* ((1 - theta_B).^m) .* condVec;

@@ -1,33 +1,39 @@
 clear;
 clc;
 
-global lambda_A lambda_B r_A r_B A_alpha A_beta B_alpha B_beta rho_0 degree degree_A degree_B
+global lambda_A lambda_B h_A h_B A_a A_c B_a B_c rho_0 degree degree_A degree_B
 
 %y是theta_w_A和theta_w_B的串联
 tic;
 
-r_A=1;
-r_B=1;
-
-A_alpha=2.3333333333333333;
-A_beta=0.3;
-B_alpha=0.4285714285714286;
-B_beta=0.7;
+% A和B两层网络的节点采纳概率均设置为常数1
+h_A = 1;
+h_B = 1;
 
 seed_count = 10;
+network_size = 10000;
+rho_0 = seed_count / network_size;
+lambda_A_array=0.01:0.01:1;
 
-% for ave_degree = 5:5:20
-for ave_degree = 20
+A_a = 0.2;
+A_c = 0.01;
+B_a = A_a;
+B_c = A_c;
+disp(['A_a = ' num2str(A_a) ', A_c = ' num2str(A_c) ', B_a = ' num2str(B_a) ', B_c = ' num2str(B_c)]);
+
+for ave_degree = 5:5:20
+    if ave_degree == 10
+        continue;
+    end
     disp(['average degree is ' num2str(ave_degree, '%.2f')]);
 
-    baseDir = fullfile('..', 'data', sprintf('A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_avedg_%.2f', A_alpha, A_beta, B_alpha, B_beta, ave_degree));
-    combined_file = fullfile(baseDir, sprintf('ER_combined_degree_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt', A_alpha, A_beta, B_alpha, B_beta));
-    degree_A_file = fullfile(baseDir, sprintf('ER_A_degree_distribution_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt', A_alpha, A_beta, B_alpha, B_beta));
-    degree_B_file = fullfile(baseDir, sprintf('ER_B_degree_distribution_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.txt', A_alpha, A_beta, B_alpha, B_beta));
+    baseDir = fullfile('..', 'data', sprintf('A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_avedg_%.2f', A_a, A_c, B_a, B_c, ave_degree));
+    combined_file = fullfile(baseDir, sprintf('ER_combined_degree_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt', A_a, A_c, B_a, B_c));
+    degree_A_file = fullfile(baseDir, sprintf('ER_A_degree_distribution_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt', A_a, A_c, B_a, B_c));
+    degree_B_file = fullfile(baseDir, sprintf('ER_B_degree_distribution_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f.txt', A_a, A_c, B_a, B_c));
 
     data = load(combined_file);
     max_degree = max(data(:,1:2), [], "all");
-    network_size=10000;
     degree_A = load(degree_A_file);
     degree_B = load(degree_B_file);
     % 保留零度联合度类；为兼容 spconvert，度索引在构造矩阵时整体平移一位。
@@ -50,13 +56,12 @@ for ave_degree = 20
     end
 
     degree=degree(degree(:,3)>0,:);
+    degree(:,3) = degree(:,3) / sum(degree(:,3));  % 加载联合度分布后强制归一化
     len_degree = length(degree);
 
-    avg_K_A=degree_A(:,1)' * degree_A(:,2);
-    avg_K_B=degree_B(:,1)' * degree_B(:,2);
+    avg_K_A = degree(:,1)' * degree(:,3);
+    avg_K_B = degree(:,2)' * degree(:,3);
 
-    rho_0=seed_count / network_size;
-    lambda_A_array=0.01:0.01:1;
     R = zeros(1, length(lambda_A_array));
     for index=1:length(lambda_A_array)
         lambda_A = lambda_A_array(index);
@@ -80,22 +85,9 @@ for ave_degree = 20
         R(1, 1:index)    % 打印输出
     end
 
-    ER_3D_temp = [0:0.01:1; [seed_count/network_size, R]]';
-    file_name = fullfile(baseDir, sprintf('ER_theoretical_R_A_A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f_seed_count_%d.txt', A_alpha, A_beta, B_alpha, B_beta, seed_count));
+        ER_3D_temp = [0:0.01:1; [rho_0, R]]';
+        file_name = fullfile(baseDir, sprintf('ER_theoretical_R_A_A_a_%.2f_A_c_%.2f_B_a_%.2f_B_c_%.2f_seed_count_%d.txt', A_a, A_c, B_a, B_c, seed_count));
     save(file_name,'ER_3D_temp','-ascii','-double');
 end
-
-%
-% plot(ER_3D_temp(:,1), ER_3D_temp(:,2), 'ob')
-% hold on
-%
-% xlabel('\beta')
-% ylabel('R(\infty)')
-%
-% savefig(fullfile(baseDir, sprintf('A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.fig', A_alpha, A_beta, B_alpha, B_beta)));
-%
-% exportgraphics(gcf, ...
-%     fullfile(baseDir, sprintf('A_alpha_%.2f_A_beta_%.2f_B_alpha_%.2f_B_beta_%.2f.png', A_alpha, A_beta, B_alpha, B_beta)), ...
-%     'Resolution', 300);
 
 toc;
